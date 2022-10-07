@@ -26,7 +26,7 @@ def activate():
             
             db = get_db() if not g.db else g.dbc
             attempt = db.execute(
-                'SELECT * FROM activationlink WHERE challenge =? state =? and CURRENT_TIMESTAMP BETWEEN created and validuntil', (number, utils.U_UNCONFIRMED)
+                'SELECT * FROM activationlink WHERE challenge =? and state =? and CURRENT_TIMESTAMP BETWEEN created and validuntil', (number, utils.U_UNCONFIRMED)
             ).fetchone()
 
             if attempt is not None:
@@ -221,7 +221,7 @@ def forgot():
                 number = hex(random.getrandbits(512))[2:]
                 
                 db.execute(
-                    'update in to',
+                    QUERY,
                     (utils.F_INACTIVE, user['id'])
                 )
                 db.execute(
@@ -255,8 +255,8 @@ def login():
             return redirect(url_for('inbox.show'))
 
         if request.method == 'POST':
-            username = request.POST.get('username')
-            password = request.POST.get('password')
+            username = request.form['username']
+            password = request.form['password']
 
             if not username:
                 error = 'Username Field Required'
