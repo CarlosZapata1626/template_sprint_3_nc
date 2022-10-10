@@ -19,7 +19,7 @@ def show():
     db = get_db()
     user_id = g.user['id']
     messages = db.execute(
-        'SELECT * FROM message WHERE to_id = ? OR from_id =?',(g.user['id'], g.user['id'])
+        'SELECT * FROM message WHERE to_id = ? OR from_id =?',(user_id, user_id) #error entre los parentesis debes cambiar a la variable que quieres que la base de datos busque
     ).fetchall()
 
     return render_template('inbox/show.html', messages=messages)

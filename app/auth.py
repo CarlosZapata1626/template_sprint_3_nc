@@ -24,7 +24,7 @@ def activate():
         if request.method == 'GET': 
             number = request.args['auth'] 
             
-            db = get_db() if not g.db else g.dbc
+            db = get_db() 
             attempt = db.execute(
                 'SELECT * FROM activationlink WHERE challenge =? and state =? and CURRENT_TIMESTAMP BETWEEN created and validuntil', (number, utils.U_UNCONFIRMED)
             ).fetchone()
@@ -55,7 +55,7 @@ def register():
             password = request.form['password']
             email = request.form['email']
             
-            db = get_db() if not g.db else g.dbc
+            db = get_db()
             error = None
 
             if not username:
@@ -98,7 +98,7 @@ def register():
             number = hex(random.getrandbits(512))[2:]
 
             db.execute(
-                 "INSERT INTO activationlink ( challenge ,state , username , password , salt , email) values(?,?,?,?,?,?)",
+                 'INSERT INTO activationlink ( challenge ,state , username , password , salt , email) values(?,?,?,?,?,?)',
                 (number, utils.U_UNCONFIRMED, username, hashP, salt, email)
             )
             db.commit()
@@ -151,7 +151,7 @@ def confirm():
                 flash(error)
                 return render_template('auth/change.html', number=authid)
 
-            db = get_db() if not g.db else g.dbc
+            db = get_db() 
             attempt = db.execute(
                 'SELECT * FROM forgotlink WHERE challenge =? AND state = ? AND CURRENT_TIMESTAMP BETWEEN created and validuntil', (authid, utils.F_ACTIVE)
             ).fetchone()
@@ -163,7 +163,7 @@ def confirm():
                 salt = hex(random.getrandbits(128))[2:]
                 hashP = generate_password_hash(password + salt)   
                 db.execute(
-                    'UPDATE forgotlink SET paswsword = ? salt = ? WHERE id = ?', (hashP, salt, attempt['userid'])
+                    'UPDATE forgotlink SET paswsword = ?, salt = ? WHERE id = ?', (hashP, salt, attempt['userid']) #error / cuando el intento no es ninguno, entonces: actualice la tabla user  y establezca estado = ?  donde id = ?
                 )
                 db.commit()
                 return redirect(url_for('auth.login'))
@@ -182,12 +182,12 @@ def change():
         if g.user:
             return redirect(url_for('inbox.show'))
         
-        if request.method == 'POST': 
+        if request.method == 'GET':  
             number = request.args['auth'] 
             
-            db = get_db() if not g.db else g.dbc
+            db = get_db()
             attempt = db.execute(
-                QUERY, (number, utils.F_ACTIVE)
+                'SELECT * FROM forgotlink WHERE challenge =? AND state = ? AND CURRENT_TIMESTAMP BETWEEN created and validuntil', (number, utils.F_ACTIVE)
             ).fetchone()
             
             if attempt is not None:
@@ -214,18 +214,18 @@ def forgot():
 
             db = get_db()
             user = db.execute(
-                'SELECT id FROM user WHERE email = ?', (email,)
+                'SELECT * FROM user WHERE email = ?', (email,)
             ).fetchone()
 
             if user is not None:
                 number = hex(random.getrandbits(512))[2:]
                 
                 db.execute(
-                    QUERY,
+                    'UPDATE forgotlink SET state = ? WHERE userid = ?', #error / debe actializar forgotlink y establecer estado donde userid
                     (utils.F_INACTIVE, user['id'])
                 )
                 db.execute(
-                    QUERY,
+                    'INSERT INTO forgotlink  (userid, challenge, state) VALUES (?,?,?)', #error / si ya actualizo no debe volver a actualizar, debe insertar dentro de forgotlink (userid, challenge, state)
                     (user['id'], number, utils.F_ACTIVE)
                 )
                 db.commit()
@@ -268,13 +268,13 @@ def login():
                 flash(error)
                 return render_template('auth/login.html')
 
-            db = get_db() if not g.db else g.dbc
+            db = get_db() 
             error = None
             user = db.execute(
-                'SELECT * FROM user WHERE username = ?', (username,)
+                'SELECT * FROM user WHERE username = ?', (username) #error / solo username porque el password esta siendo encriptado y se valida en el siguiente if.
             ).fetchone()
             
-            if user is None:
+            if not user or not password: #error / la condicion debe ser: si no hay usuario o no hay password entonces haga esto
                 error = 'Incorrect username or password'
             elif not check_password_hash(user['password'], password + user['salt']):
                 error = 'Incorrect username or password'   
@@ -293,13 +293,13 @@ def login():
 
 @bp.before_app_request
 def load_logged_in_user():
-    user_id = session.get('user id')
+    user_id = session.get('user_id') #error / revisa cual es la variable en session, debe ser la misma
 
     if user_id is None:
         g.user = None
     else:
         g.user = get_db().execute(
-            'SELECT id FROM user WHERE to_id = ?', (user_id,)
+            'SELECT * FROM user WHERE id = ?', (user_id,) #error / debe seleccionar no solo el id s i no todos los campos de la tabla
         ).fetchone()
 
         
@@ -332,4 +332,3 @@ def send_email(credentials, receiver, subject, message):
     smtp.login(credentials['user'], credentials['password'])
     smtp.sendmail(credentials['user'], receiver, email.as_string())
     smtp.quit()
-    auth.run(host='localhost',port=5000,debug=True)
