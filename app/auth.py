@@ -73,7 +73,7 @@ def register():
                 flash(error)
                 return render_template('auth/register.html')
 
-            if db.execute('SELECT * FROM user WHERE username = ?', (username,)).fetchone() is not None:
+            if db.execute('SELECT id FROM user WHERE username = ?', (username,)).fetchone() is not None:
                 error = 'User {} is already registered.'.format(username)
                 flash(error)
                 return render_template('auth/register.html')
@@ -163,7 +163,8 @@ def confirm():
                 salt = hex(random.getrandbits(128))[2:]
                 hashP = generate_password_hash(password + salt)   
                 db.execute(
-                    'UPDATE forgotlink SET paswsword = ?, salt = ? WHERE id = ?', (hashP, salt, attempt['userid']) #error / cuando el intento no es ninguno, entonces: actualice la tabla user  y establezca estado = ?  donde id = ?
+                    'UPDATE user SET paswsword = ?, salt = ? WHERE id = ?', (hashP, salt, attempt['userid']) 
+                    
                 )
                 db.commit()
                 return redirect(url_for('auth.login'))
@@ -221,11 +222,11 @@ def forgot():
                 number = hex(random.getrandbits(512))[2:]
                 
                 db.execute(
-                    'UPDATE forgotlink SET state = ? WHERE userid = ?', #error / debe actializar forgotlink y establecer estado donde userid
+                    'UPDATE forgotlink SET state = ? WHERE userid = ?', 
                     (utils.F_INACTIVE, user['id'])
                 )
                 db.execute(
-                    'INSERT INTO forgotlink  (userid, challenge, state) VALUES (?,?,?)', #error / si ya actualizo no debe volver a actualizar, debe insertar dentro de forgotlink (userid, challenge, state)
+                    'INSERT INTO forgotlink  (userid, challenge, state) VALUES (?,?,?)', 
                     (user['id'], number, utils.F_ACTIVE)
                 )
                 db.commit()
@@ -271,10 +272,10 @@ def login():
             db = get_db() 
             error = None
             user = db.execute(
-                'SELECT * FROM user WHERE username = ?', (username) #error / solo username porque el password esta siendo encriptado y se valida en el siguiente if.
+                'SELECT * FROM user WHERE username = ?', (username,)
             ).fetchone()
             
-            if not user or not password: #error / la condicion debe ser: si no hay usuario o no hay password entonces haga esto
+            if not user: 
                 error = 'Incorrect username or password'
             elif not check_password_hash(user['password'], password + user['salt']):
                 error = 'Incorrect username or password'   
@@ -293,13 +294,13 @@ def login():
 
 @bp.before_app_request
 def load_logged_in_user():
-    user_id = session.get('user_id') #error / revisa cual es la variable en session, debe ser la misma
+    user_id = session.get('user_id') 
 
     if user_id is None:
         g.user = None
     else:
         g.user = get_db().execute(
-            'SELECT * FROM user WHERE id = ?', (user_id,) #error / debe seleccionar no solo el id s i no todos los campos de la tabla
+            'SELECT * FROM user WHERE id = ?', (user_id,) 
         ).fetchone()
 
         

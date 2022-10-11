@@ -17,9 +17,9 @@ def getDB():
 @login_required
 def show():
     db = get_db()
-    user_id = g.user['id']
+    userId = g.user['id']
     messages = db.execute(
-        'SELECT * FROM message WHERE to_id = ? OR from_id =?',(user_id, user_id) #error entre los parentesis debes cambiar a la variable que quieres que la base de datos busque
+        'SELECT * FROM message WHERE to_id = ?  OR from_id =?',(userId, userId) 
     ).fetchall()
 
     return render_template('inbox/show.html', messages=messages)
@@ -52,7 +52,7 @@ def send():
         userto = None 
         
         userto = db.execute(
-            'select * from user WHERE username= ?' , (to_username)
+            'SELECT * FROM user WHERE username= ?' , (to_username,)
         ).fetchone()
         
         if userto is None:
@@ -63,7 +63,7 @@ def send():
         else:
             db = get_db()
             db.execute(
-                'INSERT INTO message(from_id,to_id,subject,body) VALUES (?,?,?,?)',(g.user['id'],+userto['id'], subject, body)
+                'INSERT INTO message (from_id , to_id , subject , body ) VALUES ( ? , ? , ? , ? )',(g.user['id'],userto['id'], subject, body)
             )
             db.commit()
 
